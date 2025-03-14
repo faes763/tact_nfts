@@ -5,6 +5,7 @@ import '@ton/test-utils';
 import { config_test } from '../config';
 import { ItemNft } from '../wrappers/ItemNft';
 import { MarketNft } from '../wrappers/MarketNft';
+import { MarketItem } from '../wrappers/MarketItem';
 
 describe('MinterNft', () => {
     let blockchain: Blockchain;
@@ -17,15 +18,20 @@ describe('MinterNft', () => {
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
-        minterNft = blockchain.openContract(await MinterNft.fromInit(
-            config_test.mint_data, 
-            toNano("0.05")
-        ));
-
-        marketNft = blockchain.openContract(await MarketNft.fromInit());
-
 
         deployer = await blockchain.treasury('deployer');
+
+        minterNft = blockchain.openContract(await MinterNft.fromInit(
+            config_test.mint_data, 
+            toNano("0.05"),
+            11n,
+            1000n,
+            deployer.address,
+        ));
+
+        marketNft = blockchain.openContract(await MarketNft.fromInit(100n, null));
+
+
 
         users.push(await blockchain.treasury('user1'));
         users.push(await blockchain.treasury('user2'));
@@ -48,6 +54,9 @@ describe('MinterNft', () => {
             deploy: true,
             success: true,
         });
+
+
+        
 
 
 
@@ -152,32 +161,70 @@ describe('MinterNft', () => {
 
         const lengthNft = await minterNft.getCurrentIndex();
 
-        console.log(lengthNft);
-
         const addresses = await Promise.all(Array.from({ length: Number(lengthNft) }).map((_, i) => minterNft.getGetNftAddressByIndex(BigInt(i))));
         const nftsContracts = await Promise.all(addresses.map(address => (ItemNft.fromAddress(address))));
         const [nft1] = await Promise.all(nftsContracts.map((contract, i) => blockchain.openContract(contract)));
 
         await marketNft.send(
-            deployer.getSender(),
+            users[0].getSender(),
             {
-                value: toNano("1"),
+                value: toNano("0.5"),
             },
             {
-                $$type: "CreateSaleNftItem",
+                $$type: "CreateMarketNftItem",
                 nft_address: nft1.address,
-                price: toNano("0.1")
+                full_price: toNano("1")
             }
         );
 
+
+        const sale_address = await marketNft.getGetMarketAddress(nft1.address, toNano("1"));
         
 
-        console.log(nft1.address);
+        const sale = await blockchain.openContract(await MarketItem.fromAddress(sale_address));
 
-        console.log(minterNft.address);
+        await sale.send(users[0].getSender(),{value: toNano("0.1")}, {$$type: "Deploy", queryId: BigInt(Date.now())});
 
-        // console.log(await marketNft.getGetCollection());
+        console.log(await sale.getMyBalance());
 
+        await nft1.send(
+            users[0].getSender(),
+            {
+                value: toNano("0.1")
+            }, 
+            {
+                $$type: "Transfer",
+                query_id: 37n,
+                new_owner: sale_address,
+                response_destination: sale_address,
+                custom_payload: null,
+                forward_amount: toNano("0.04"), // Нужно ~ для оповещения ton("0.04")
+                forward_payload: beginCell().storeUint(1, 32).endCell().asSlice()
+            }
+        );
+
+
+        let sale_data = await sale.getGetFixPriceData();
+
+        // Если nft_owner_address = sale_address, то перевод был сделан успешно
+        await expect(sale_data.nft_owner_address.toString()).toBe(sale_address.toString());
+
+        
+
+        const res = await sale.send(
+            deployer.getSender(),
+            {
+                value: sale_data.full_price + toNano("0.5")
+            },
+            null
+        );
+
+        console.log(res.events);
+        console.log(await sale.getMyBalance());
+
+        sale_data = await sale.getGetFixPriceData();
+        console.log(sale_data);
+        console.log(deployer.address);
 
     })
 });

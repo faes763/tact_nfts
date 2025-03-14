@@ -1,15 +1,20 @@
 import "@stdlib/deploy";
-import "./helpers/traits/ownable.tact";
+import "./helpers/traits/nft/nft-standard.tact";
 import "./helpers/traits/whitelist.tact";
 import "./helpers/traits/stoppable.tact";
+import "./helpers/traits/ownable.tact";
 import "./helpers/traits/helpers.tact";
 import "./helpers/messages.tact";
 
 import "./item_nft.tact";
 
-contract MinterNft with Deployable, Ownable, WhiteList, Stoppable, Helpers {
+contract MinterNft with Deployable, Ownable, WhiteList, Stoppable, Helpers, NftRoyalty {
 
     owner: Address;
+
+    numerator: Int;
+    denominator: Int;
+    destination: Address;
 
     // Collection
     next_item_index: Int as uint64 = 0;
@@ -27,7 +32,10 @@ contract MinterNft with Deployable, Ownable, WhiteList, Stoppable, Helpers {
     
     init(
         collection_content: Cell,
-        price: Int?
+        price: Int?,
+        numerator: Int,
+        denominator: Int,
+        destination: Address,
     ) {
 
         // владельцем контракта становится создавший коллекцию
@@ -39,6 +47,10 @@ contract MinterNft with Deployable, Ownable, WhiteList, Stoppable, Helpers {
         if(price != null) {
             self.price = price!!;
         }
+
+        self.numerator = numerator;
+        self.denominator = denominator;
+        self.destination = destination;
     }
 
     receive(msg: FreeMint) {

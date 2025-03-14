@@ -1,5 +1,7 @@
 
 
+
+
 // ----- MINTER NFT MESSAGES ----- //
 
 // Для бесплатного минта работает по whitelist
@@ -38,6 +40,23 @@ message(0x5fcc3d14) Transfer {
     forward_payload: Slice as remaining;
 }
 
+
+struct RoyaltyParams {
+    numerator: Int;
+    denominator: Int;
+    destination: Address;
+}
+
+message(0xa8cb00ad) ReportRoyaltyParams {
+    numerator: Int; 
+    denominator: Int; 
+    destination: Address;
+    query_id: Int as uint64;
+}
+
+message(0x693d3950) GetRoyaltyParams {
+    query_id: Int as uint64;
+}
 
 // Для оповещения о переводе NFT
 message(0xd53276db) Excesses {
@@ -81,34 +100,25 @@ message GetSaleData {
 // ----- MARKET NFT MESSAGES ----- //
 
 // Нужно для создания
-message RequestSaleNftItem {
-    nft_address: Address;
-    price: Int as coins;
-}
-
 message CreateMarketNftItem {
-    owner_address: Address;
-    from_address: Address;
+    nft_address: Address; 
+    full_price: Int; 
 }
 
-message GetInfoForSaleNft {
-    is_initialized: Bool;
-    index: Int;
-    collection_address: Address;
-    owner_address: Address;
-    individual_content: Cell;
-    price: Int as coins;
-    from_address: Address;
-    nft_address: Address;
-}
 
 // ----- MARKET ITEM NFT MESSAGES ----- //
 
-message InitMarketItem {
-    price: Int;
+struct MarketData {
+    is_complete: Bool = false; // завершена ли продажа или нет
+    created_at: Int; // время создания контракта, используется чтобы одинаковые контракты имели разные адреса
+    marketplace_address: Address;
     nft_address: Address;
-}
-
-message SetOwner {
-    owner_address: Address;
+    nft_owner_address: Address;
+    full_price: Int as coins;
+    marketplace_fee_address: Address; // адрес для комиссии маркетплейса
+    marketplace_fee: Int; // Размер комиссии маркетплейса
+    royalty_amount: Int; // размер роялти коллекции
+    royalty_address: Address; // адрес для роялти коллекции
+    sold_at: Int = 0; // Дата продажи нфт, если она состоялась
+    query_id: Int = 0; // query_id который привёл к продаже nft
 }
