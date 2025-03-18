@@ -103,10 +103,29 @@ message GetSaleData {
 message CreateMarketNftItem {
     nft_address: Address; 
     full_price: Int; 
+    nft_sale_address: Address?;
+}
+
+message CreateMarketItemFromOther {
+    nft_sale_address: Address;
+}
+
+struct ItemData {
+    full_price: Int; 
+}
+
+// Для получение market_fee
+message GetMarketParams {
+    query_id: Int as uint64;
+}
+message ReportMarketParams {
+    query_id: Int as uint64;
+    marketplace_fee_address: Address?; 
+    marketplace_fee: Int;
 }
 
 
-// ----- MARKET ITEM NFT MESSAGES ----- //
+// ----- MARKET SALE NFT MESSAGES ----- //
 
 struct MarketData {
     is_complete: Bool = false; // завершена ли продажа или нет
@@ -121,4 +140,12 @@ struct MarketData {
     royalty_address: Address; // адрес для роялти коллекции
     sold_at: Int = 0; // Дата продажи нфт, если она состоялась
     query_id: Int = 0; // query_id который привёл к продаже nft
+}
+
+// ----- MARKET ITEM MESSAGES ----- //
+
+message ProvideSaleNft {
+    nft_sale_address: Address?;
+    full_price: Int as coins;
+    nft_address: Address;
 }

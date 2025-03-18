@@ -26,8 +26,6 @@ contract ItemNft with Deployable, NftItemStandard {
     }
 
     
-
-    
     // ---- Getters ---- //
 
 

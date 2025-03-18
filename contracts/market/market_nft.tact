@@ -1,9 +1,10 @@
 import "@stdlib/deploy";
-import "./helpers/traits/ownable.tact";
-import "./helpers/messages.tact";
+import "../helpers/traits/ownable.tact";
+import "../helpers/messages.tact";
 
-import "./minter_nft.tact";
-import "./item_nft.tact";
+import "../minter_nft.tact";
+import "../item_nft.tact";
+import "./sale_nft.tact";
 import "./market_item.tact";
 
 contract MarketNft with Deployable, Ownable {
@@ -13,6 +14,8 @@ contract MarketNft with Deployable, Ownable {
     marketplace_fee_address: Address?; 
     marketplace_fee: Int;
 
+    next_item_index: Int as uint64 = 0;
+
     init(marketplace_fee: Int, marketplace_fee_address: Address?) {
         self.owner = sender();
 
@@ -21,19 +24,86 @@ contract MarketNft with Deployable, Ownable {
         self.marketplace_fee_address = marketplace_fee_address;
     }
 
-
-    receive(msg: CreateMarketNftItem) {
-
-        let market_item_init: StateInit = self.get_market_item_state(msg.nft_address, msg.full_price);
+    receive(msg: CreateMarketItemFromOther) {
+        let market_item_init: StateInit = self.get_market_item_state(self.next_item_index);
 
         send(SendParameters{
             to: contractAddress(market_item_init),
             value: 0,
             mode: SendRemainingValue,
+            body: ProvideSaleNft{
+                nft_sale_address: msg.nft_sale_address,
+                full_price: 0,
+                nft_address: newAddress(0, 0),
+            }.toCell(),
             code: market_item_init.code,
             data: market_item_init.data,
         });
+
+        self.next_item_index = self.next_item_index + 1;
     }
+
+    fun fromSlice(s: Slice): ItemData {
+        return ItemData{
+            full_price: s.loadCoins() 
+        };
+    }
+
+    receive(msg: OwnershipAssigned) {
+        let market_item_init: StateInit = self.get_market_item_state(self.next_item_index);
+
+        let data: ItemData = self.fromSlice(msg.forward_payload);
+
+
+        send(SendParameters{
+            to: contractAddress(market_item_init),
+            value: ton("0.15"),
+            body: ProvideSaleNft{
+                nft_sale_address: null,
+                full_price: data.full_price,
+                nft_address: sender(),
+            }.toCell(),
+            code: market_item_init.code,
+            data: market_item_init.data,
+        });
+
+        let sale_init: StateInit = initOf SaleNft(myAddress(), sender(), data.full_price, self.marketplace_fee_address, self.marketplace_fee);
+
+
+        send(SendParameters{
+            to: sender(),
+            value: ton("0.15"),
+            body: Transfer{
+                query_id: now(),
+                new_owner:  contractAddress(sale_init),
+                response_destination: myAddress(),
+                custom_payload: emptyCell(),
+                forward_amount: ton("0.05"),
+                forward_payload: emptySlice()
+            }.toCell(),
+        });
+
+        self.next_item_index = self.next_item_index + 1;
+    }
+
+
+
+    receive(msg: GetMarketParams) {
+        send(SendParameters{
+            to: sender(),
+            value: 0,
+            mode: SendRemainingValue,
+            body: ReportMarketParams{
+                query_id: msg.query_id,
+                marketplace_fee_address: self.marketplace_fee_address,
+                marketplace_fee: self.marketplace_fee,
+            }.toCell()
+        });
+    }
+
+    receive() {}
+
+
 
     // ----- PRIVATE METHODS ----- //
     
@@ -41,20 +111,21 @@ contract MarketNft with Deployable, Ownable {
     // ---- Getters ---- //
 
    // Получение адреса Market Item
-    get fun get_market_address(nft_address: Address, full_price: Int,): Address {
-        return contractAddress(self.get_market_item_state(nft_address, full_price));
+    get fun get_market_address(item_index: Int): Address {
+        return contractAddress(self.get_market_item_state(item_index));
     }
 
    // Получение StateInit Market Item
-    get fun get_market_item_state(nft_address: Address, full_price: Int,): StateInit {
-        return initOf MarketItem(myAddress(), nft_address, full_price, self.marketplace_fee_address, self.marketplace_fee);
+    get fun get_market_item_state(item_index: Int): StateInit {
+        return initOf MarketItem(myAddress(), item_index);
+    }
+
+     // Для получения текущего индекса
+    get fun get_current_index(): Int {
+        return self.next_item_index;
     }
 
 }
-
-
-
-
 
 
 

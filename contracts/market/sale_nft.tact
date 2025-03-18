@@ -1,6 +1,6 @@
 import "@stdlib/deploy";
-import "./helpers/traits/ownable.tact";
-import "./helpers/messages.tact";
+import "../helpers/traits/ownable.tact";
+import "../helpers/messages.tact";
 
 // Ориентировался на https://github.com/getgems-io/nft-contracts/blob/main/packages/contracts/nft-fixprice-sale-v3/description-ru.md
 
@@ -26,7 +26,7 @@ const hundred_percent: Int = 100000000000;
 @name(muldiv)
 native mulDiv(a: Int, b: Int, c: Int): Int;
 
-contract MarketItem {
+contract SaleNft {
 
     is_complete: Bool = false; // завершена ли продажа или нет
     created_at: Int; // время создания контракта, используется чтобы одинаковые контракты имели разные адреса
@@ -68,7 +68,9 @@ contract MarketItem {
             self.marketplace_fee_address = marketplace_fee_address!!;
         }
 
-        self.nft_owner_address = newAddress(0, 0); // У нфт нет owner, до тех пор пока nft не перейдёт во владение контракта
+        // self.nft_owner_address = newAddress(0, 0); // У нфт нет owner, до тех пор пока nft не перейдёт во владение контракта
+        
+        self.nft_owner_address = myAddress(); // Market передаёт во владение nft сразу же
 
         self.owner = sender();
 
@@ -88,6 +90,8 @@ contract MarketItem {
 
 
     }
+
+    receive("Bought on getgems.io") {}
 
 
     // Если контракт получил nft
@@ -158,16 +162,15 @@ contract MarketItem {
     // BUY TON METHOD
     receive() { 
         let ctx: Context = context();
-        dump(self.full_price);
-        dump(ctx.value);
 
         require(self.full_price <= ctx.value, "Need more TON");
+        require(self.nft_owner_address == myAddress(), "The contract has no nft");
 
 
 
 
         if(self.royalty_address != newAddress(0, 0)) {
-        dump("send royalty");
+            dump("send royalty");
 
             let royalty_fee: Int = mulDiv(self.full_price, mulDiv(self.numerator, hundred_percent, self.denominator), hundred_percent);
 

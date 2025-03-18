@@ -4,23 +4,14 @@ import { NetworkProvider } from '@ton/blueprint';
 import { config_test } from '../config';
 
 export async function run(provider: NetworkProvider) {
-    const minterNft = provider.open(await MinterNft.fromInit(
-        config_test.mint_data, 
-        toNano("0.01"),
-        11n,
-        1000n,
-        address("0QAdD7TxUylbXElqj98f5GuLlmtyIq8NiqnirxlYlvvf3a2L")
-    ));
+    const minterNft = provider.open(await MinterNft.fromAddress(address("kQDa16vEoMb5TB5suLW3FuKXnnEF5EPz6pNzKF3ryPpjv2yM")));
 
     await minterNft.send(
         provider.sender(),
         {
-            value: toNano('0.05'),
+            value: toNano('0.25'),
         },
-        {
-            $$type: 'Deploy',
-            queryId: BigInt(Date.now()),
-        }
+        null
     );
 
     await provider.waitForDeploy(minterNft.address);

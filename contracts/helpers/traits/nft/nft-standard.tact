@@ -30,7 +30,6 @@ trait NftItemStandard with Ownable, Helpers {
         } else {
             self.onlyOwner();
 
-
             // Передаем владение
             self.transfer(msg);
         }
@@ -69,7 +68,7 @@ trait NftItemStandard with Ownable, Helpers {
                 body: OwnershipAssigned{
                     query_id: data.query_id,
                     prev_owner: sender(),
-                    forward_payload: data.forward_payload
+                    forward_payload: data.forward_payload,
                 }.toCell()
             }); 
         }
@@ -104,17 +103,14 @@ trait NftItemStandard with Ownable, Helpers {
     // ---- Getters ---- //
 
     get fun get_nft_data(): GetNftData {
-        let b: StringBuilder = beginString();
-        let collectionData: String = (self.individual_content!!).asSlice().asString();
-        b.append(collectionData);
-        b.append(self.item_index.toString());
+
 
         return GetNftData{
             is_initialized: self.is_initialized, 
             index: self.item_index, 
             collection_address: self.collection_address, 
             owner_address: self.owner,
-            individual_content: b.toCell()
+            individual_content: self.individual_content!!
         };
     }
 }
